@@ -1,0 +1,3 @@
+# TLS certificates - generate locally with generate-certs.sh
+cert.pem
+key.pem

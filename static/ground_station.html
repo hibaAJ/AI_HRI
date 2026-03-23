@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ground Station - HRI</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f0f4f8;
+      color: #111827;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: #1e40af;
+      color: #fff;
+      padding: 0.85rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    header h1 { font-size: 1.15rem; font-weight: 600; flex: 1; }
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      opacity: 0.9;
+    }
+    .dot {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      background: #9ca3af;
+      flex-shrink: 0;
+    }
+    .dot.green { background: #4ade80; }
+    .dot.yellow { background: #facc15; animation: pulse 1s infinite; }
+    .dot.red { background: #f87171; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      padding: 1rem;
+    }
+    @media (max-width: 640px) {
+      main { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      background: #fff;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 0.75rem 1rem;
+      background: #f9fafb;
+      border-bottom: 1px solid #e5e7eb;
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #374151;
+    }
+    .panel-body {
+      flex: 1;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    /* Mic button */
+    .mic-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.7rem 1.25rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: #2563eb;
+      color: #fff;
+      transition: background 0.15s;
+    }
+    .mic-btn:hover { background: #1d4ed8; }
+    .mic-btn.recording { background: #dc2626; animation: rec-pulse 1.2s infinite; }
+    .mic-btn.recording:hover { background: #b91c1c; }
+    @keyframes rec-pulse { 0%,100%{opacity:1} 50%{opacity:0.75} }
+    .mic-btn:disabled { background: #9ca3af; cursor: not-allowed; animation: none; }
+
+    /* Interim transcript */
+    .interim-box {
+      min-height: 2.5rem;
+      padding: 0.5rem 0.75rem;
+      background: #eff6ff;
+      border: 1px dashed #93c5fd;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      color: #1e40af;
+      font-style: italic;
+    }
+
+    /* Log */
+    .log {
+      flex: 1;
+      overflow-y: auto;
+      max-height: 280px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .log-entry {
+      padding: 0.45rem 0.65rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+    .log-entry.sent {
+      background: #eff6ff;
+      border-left: 3px solid #2563eb;
+      color: #1e3a8a;
+    }
+    .log-entry.received {
+      background: #f0fdf4;
+      border-left: 3px solid #16a34a;
+      color: #14532d;
+    }
+    .log-entry .time {
+      font-size: 0.73rem;
+      color: #9ca3af;
+      margin-right: 0.4rem;
+    }
+    .log-empty {
+      text-align: center;
+      color: #9ca3af;
+      font-size: 0.8rem;
+      padding: 1rem;
+    }
+
+    /* Manual send */
+    .send-row {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .send-row input {
+      flex: 1;
+      padding: 0.55rem 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      outline: none;
+    }
+    .send-row input:focus { border-color: #2563eb; }
+    .send-row button {
+      padding: 0.55rem 1rem;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .send-row button:hover { background: #1d4ed8; }
+
+    /* TTS controls */
+    .tts-row {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.85rem;
+      color: #374151;
+    }
+    .tts-row input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; }
+    .tts-row select {
+      flex: 1;
+      padding: 0.35rem 0.5rem;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 0.8rem;
+    }
+
+    /* Clear button */
+    .clear-btn {
+      align-self: flex-end;
+      background: none;
+      border: 1px solid #e5e7eb;
+      border-radius: 5px;
+      padding: 0.25rem 0.6rem;
+      font-size: 0.75rem;
+      color: #6b7280;
+      cursor: pointer;
+    }
+    .clear-btn:hover { background: #f3f4f6; }
+
+    .peer-badge {
+      font-size: 0.75rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 99px;
+      background: rgba(255,255,255,0.2);
+    }
+    .peer-badge.online { background: rgba(74,222,128,0.25); color: #bbf7d0; }
+    .peer-badge.offline { background: rgba(248,113,113,0.2); color: #fecaca; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Ground Station</h1>
+  <div class="status-bar">
+    <div class="dot yellow" id="ws-dot"></div>
+    <span id="ws-label">Connecting...</span>
+    <span class="peer-badge offline" id="peer-badge">Tablet offline</span>
+  </div>
+</header>
+
+<main>
+  <!-- LEFT: Send panel -->
+  <div class="panel">
+    <div class="panel-header">Microphone / Send</div>
+    <div class="panel-body">
+      <button class="mic-btn" id="mic-btn" disabled>
+        <span id="mic-icon">&#127908;</span>
+        <span id="mic-label">Start Listening</span>
+      </button>
+      <div class="interim-box" id="interim-text">Interim transcript will appear here...</div>
+      <div class="log" id="sent-log">
+        <div class="log-empty">Nothing sent yet</div>
+      </div>
+      <div class="send-row">
+        <input type="text" id="text-input" placeholder="Type a message and press Enter...">
+        <button id="send-btn">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Receive panel -->
+  <div class="panel">
+    <div class="panel-header">Received from Tablet</div>
+    <div class="panel-body">
+      <div class="tts-row">
+        <input type="checkbox" id="tts-toggle" checked>
+        <label for="tts-toggle">Auto-speak received messages</label>
+      </div>
+      <div class="tts-row">
+        <label for="voice-select">Voice:</label>
+        <select id="voice-select"></select>
+      </div>
+      <div class="log" id="recv-log">
+        <div class="log-empty">Nothing received yet</div>
+      </div>
+      <button class="clear-btn" id="clear-recv-btn">Clear</button>
+    </div>
+  </div>
+</main>
+
+<script>
+  // ── WebSocket ──────────────────────────────────────────────
+  const WS_URL = `wss://${location.host}/ws/ground`;
+  let ws = null;
+  let reconnectTimer = null;
+  let tabletOnline = false;
+
+  function connect() {
+    ws = new WebSocket(WS_URL);
+
+    ws.onopen = () => {
+      setWsStatus('green', 'Connected');
+      clearTimeout(reconnectTimer);
+    };
+
+    ws.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'peer_status') {
+        tabletOnline = msg.connected;
+        const badge = document.getElementById('peer-badge');
+        badge.textContent = tabletOnline ? 'Tablet online' : 'Tablet offline';
+        badge.className = 'peer-badge ' + (tabletOnline ? 'online' : 'offline');
+      } else if (msg.type === 'transcript' && msg.final) {
+        addLog('recv-log', msg.text, 'received');
+        if (document.getElementById('tts-toggle').checked) speak(msg.text);
+      }
+    };
+
+    ws.onclose = () => {
+      setWsStatus('yellow', 'Reconnecting...');
+      updatePeerBadge(false);
+      reconnectTimer = setTimeout(connect, 3000);
+    };
+
+    ws.onerror = () => ws.close();
+  }
+
+  function sendMsg(text, isFinal = true) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'transcript', text, final: isFinal }));
+    }
+  }
+
+  function setWsStatus(color, label) {
+    const dot = document.getElementById('ws-dot');
+    dot.className = `dot ${color}`;
+    document.getElementById('ws-label').textContent = label;
+  }
+
+  function updatePeerBadge(online) {
+    tabletOnline = online;
+    const badge = document.getElementById('peer-badge');
+    badge.textContent = online ? 'Tablet online' : 'Tablet offline';
+    badge.className = 'peer-badge ' + (online ? 'online' : 'offline');
+  }
+
+  // ── ASR ───────────────────────────────────────────────────
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognition = null;
+  let isListening = false;
+
+  function setupASR() {
+    const btn = document.getElementById('mic-btn');
+    if (!SR) {
+      btn.disabled = true;
+      document.getElementById('mic-label').textContent = 'ASR not supported in this browser';
+      return;
+    }
+
+    recognition = new SR();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = (e) => {
+      let interim = '';
+      let finalText = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          finalText += e.results[i][0].transcript.trim() + ' ';
+        } else {
+          interim += e.results[i][0].transcript;
+        }
+      }
+      document.getElementById('interim-text').textContent = interim || '';
+      if (finalText.trim()) {
+        const t = finalText.trim();
+        addLog('sent-log', t, 'sent');
+        sendMsg(t, true);
+        document.getElementById('interim-text').textContent = '';
+      }
+    };
+
+    recognition.onend = () => {
+      // Auto-restart for continuous listening
+      if (isListening) {
+        try { recognition.start(); } catch (_) {}
+      }
+    };
+
+    recognition.onerror = (e) => {
+      if (e.error === 'no-speech') return;
+      console.warn('ASR error:', e.error);
+      if (e.error === 'not-allowed') {
+        isListening = false;
+        setMicState(false);
+        alert('Microphone access denied. Please allow microphone access and reload.');
+      }
+    };
+
+    btn.disabled = false;
+  }
+
+  function setMicState(listening) {
+    isListening = listening;
+    const btn = document.getElementById('mic-btn');
+    const icon = document.getElementById('mic-icon');
+    const label = document.getElementById('mic-label');
+    if (listening) {
+      btn.classList.add('recording');
+      icon.textContent = '\u23F9';
+      label.textContent = 'Stop Listening';
+    } else {
+      btn.classList.remove('recording');
+      icon.innerHTML = '&#127908;';
+      label.textContent = 'Start Listening';
+      document.getElementById('interim-text').textContent = '';
+    }
+  }
+
+  function toggleMic() {
+    if (!recognition) return;
+    if (isListening) {
+      isListening = false;
+      recognition.stop();
+      setMicState(false);
+    } else {
+      isListening = true;
+      setMicState(true);
+      try { recognition.start(); } catch (_) {}
+    }
+  }
+
+  // ── TTS ───────────────────────────────────────────────────
+  let voices = [];
+
+  function loadVoices() {
+    const v = speechSynthesis.getVoices();
+    if (v.length === 0) return;
+    voices = v;
+    const sel = document.getElementById('voice-select');
+    const prev = sel.value;
+    sel.innerHTML = '';
+    voices.forEach((voice, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = `${voice.name} (${voice.lang})`;
+      sel.appendChild(opt);
+    });
+    // Restore selection or pick a default English voice
+    if (prev && voices[prev]) {
+      sel.value = prev;
+    } else {
+      const engIdx = voices.findIndex(v => v.lang.startsWith('en'));
+      if (engIdx >= 0) sel.value = engIdx;
+    }
+  }
+
+  function speak(text) {
+    if (!text) return;
+    speechSynthesis.cancel();
+    // Small delay after cancel — fixes Chrome bug where cancel() drops the next utterance
+    setTimeout(() => {
+      const utt = new SpeechSynthesisUtterance(text);
+      const idx = parseInt(document.getElementById('voice-select').value);
+      if (voices[idx]) utt.voice = voices[idx];
+      utt.rate = 1;
+      utt.pitch = 1;
+      speechSynthesis.speak(utt);
+    }, 150);
+  }
+
+  speechSynthesis.onvoiceschanged = loadVoices;
+  loadVoices();
+
+  // ── UI helpers ────────────────────────────────────────────
+  function addLog(logId, text, type) {
+    const log = document.getElementById(logId);
+    const empty = log.querySelector('.log-empty');
+    if (empty) empty.remove();
+
+    const entry = document.createElement('div');
+    entry.className = `log-entry ${type}`;
+    const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+    entry.innerHTML = `<span class="time">${time}</span>${escapeHtml(text)}`;
+    log.appendChild(entry);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function escapeHtml(t) {
+    const d = document.createElement('div');
+    d.appendChild(document.createTextNode(t));
+    return d.innerHTML;
+  }
+
+  // ── Events ────────────────────────────────────────────────
+  document.getElementById('mic-btn').addEventListener('click', toggleMic);
+
+  document.getElementById('send-btn').addEventListener('click', () => {
+    const input = document.getElementById('text-input');
+    const text = input.value.trim();
+    if (text) {
+      addLog('sent-log', text, 'sent');
+      sendMsg(text);
+      input.value = '';
+    }
+  });
+
+  document.getElementById('text-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('send-btn').click();
+  });
+
+  document.getElementById('clear-recv-btn').addEventListener('click', () => {
+    const log = document.getElementById('recv-log');
+    log.innerHTML = '<div class="log-empty">Nothing received yet</div>';
+  });
+
+  // ── Init ──────────────────────────────────────────────────
+  setupASR();
+  connect();
+</script>
+</body>
+</html>

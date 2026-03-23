@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HRI System</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      text-align: center;
+      padding: 2rem;
+    }
+    h1 { font-size: 2rem; color: #111827; margin-bottom: 0.5rem; }
+    p { color: #6b7280; margin-bottom: 2.5rem; font-size: 1rem; }
+    .cards {
+      display: flex;
+      gap: 1.5rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    a.card {
+      display: block;
+      background: #fff;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 2rem 3rem;
+      text-decoration: none;
+      color: #111827;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    a.card:hover {
+      border-color: #2563eb;
+      box-shadow: 0 4px 16px rgba(37,99,235,0.12);
+    }
+    .card .icon { font-size: 3rem; margin-bottom: 0.75rem; }
+    .card h2 { font-size: 1.25rem; margin-bottom: 0.25rem; }
+    .card p { font-size: 0.875rem; color: #6b7280; margin: 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>HRI System</h1>
+    <p>Select your role to continue</p>
+    <div class="cards">
+      <a class="card" href="/ground_station.html">
+        <div class="icon">&#128421;</div>
+        <h2>Ground Station</h2>
+        <p>ASR + TTS + Send to tablet</p>
+      </a>
+      <a class="card" href="/tablet.html">
+        <div class="icon">&#128196;</div>
+        <h2>Tablet</h2>
+        <p>Receive + ASR + Reply</p>
+      </a>
+    </div>
+  </div>
+</body>
+</html>
