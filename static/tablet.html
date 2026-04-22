@@ -236,16 +236,23 @@
   // Fix common ASR misrecognitions for domain terms
   function correctTranscript(t) {
     return t
+      // UOS mishearings (letter-by-letter pronunciation)
+      .replace(/\byou\s+owe\s+us\b/gi, 'UOS')
+      .replace(/\byou\s+or\s+us\b/gi, 'UOS')
+      .replace(/\byou\s+owe\s+s\b/gi, 'UOS')
+      .replace(/\byou\s+o\s+s\b/gi, 'UOS')
+      .replace(/\bu\s+o\s+s\b/gi, 'UOS')
+      // Sharjah mishearings
       .replace(/\bgeorgia\b/gi, 'Sharjah')
+      .replace(/\bsasha\b/gi, 'Sharjah')
       .replace(/\bshar+[jg]a+h?\b/gi, 'Sharjah')
-      .replace(/\bshar+[jg]a\b/gi, 'Sharjah')
       .replace(/\bsharp\s*jaw\b/gi, 'Sharjah')
       .replace(/\bcharge\s*[auh]\b/gi, 'Sharjah')
+      // CCI mishearings
       .replace(/\bcc[\s\-]?i\b/gi, 'CCI')
       .replace(/\bse[\s\-]?i\b/gi, 'CCI')
       .replace(/\bsee[\s\-]?i\b/gi, 'CCI')
-      .replace(/\binformat+ics\b/gi, 'informatics')
-      .replace(/\babet\b/gi, 'ABET');
+      .replace(/\bsisi\b/gi, 'CCI');
   }
 
   function askQuestion(text) {
