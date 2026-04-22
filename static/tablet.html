@@ -233,7 +233,21 @@
     ws.onerror = () => ws.close();
   }
 
+  // Fix common ASR misrecognitions for domain terms
+  function correctTranscript(t) {
+    return t
+      .replace(/\bshar+[jg]a+h?\b/gi, 'Sharjah')
+      .replace(/\bshar+[jg]a\b/gi, 'Sharjah')
+      .replace(/\bcc[\s\-]?i\b/gi, 'CCI')
+      .replace(/\bse[\s\-]?i\b/gi, 'CCI')
+      .replace(/\bsee[\s\-]?i\b/gi, 'CCI')
+      .replace(/\binformat+ics\b/gi, 'informatics')
+      .replace(/\babet\b/gi, 'ABET')
+      .replace(/\bcomputing\s+and\s+inform/gi, 'Computing and Informatics');
+  }
+
   function askQuestion(text) {
+    text = correctTranscript(text);
     if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
     addToLog('question', text);
     showThinking();
