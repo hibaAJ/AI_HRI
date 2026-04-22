@@ -1,11 +1,26 @@
 import os
 import json
+import shutil
 import socket
 import datetime
 import ipaddress
 import asyncio
 import tempfile
 from contextlib import asynccontextmanager
+import glob as _glob
+
+# ── Ensure ffmpeg is findable (winget puts it outside the default PATH) ───────
+def _add_ffmpeg_to_path():
+    if shutil.which("ffmpeg"):
+        return
+    winget_base = os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "WinGet", "Packages")
+    for exe in _glob.glob(os.path.join(winget_base, "Gyan.FFmpeg*", "**", "bin", "ffmpeg.exe"), recursive=True):
+        os.environ["PATH"] = os.path.dirname(exe) + os.pathsep + os.environ.get("PATH", "")
+        print(f"ffmpeg found at: {exe}")
+        return
+    print("WARNING: ffmpeg not found in PATH or WinGet packages. Whisper transcription may fail.")
+
+_add_ffmpeg_to_path()
 
 import ollama as ollama_client
 from faster_whisper import WhisperModel

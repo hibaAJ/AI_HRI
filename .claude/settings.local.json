@@ -28,7 +28,22 @@
       "Bash(netstat -ano)",
       "Bash(awk '{print $5}')",
       "Bash(taskkill *)",
-      "Bash(xargs -I{} taskkill //F //PID {})"
+      "Bash(xargs -I{} taskkill //F //PID {})",
+      "Bash(curl -s http://localhost:11434/api/tags)",
+      "Bash(curl -sk https://localhost:8000/ws/tablet)",
+      "Bash(echo \"PID: $!\")",
+      "Read(//tmp/**)",
+      "Bash(ffmpeg -version)",
+      "Bash(where ffmpeg *)",
+      "Bash(winget install *)",
+      "Read(//c/ProgramData/Microsoft/WinGet/**)",
+      "Read(//c/Program Files/ffmpeg/bin/**)",
+      "Bash(find /c -name \"ffmpeg.exe\")",
+      "Bash(export PATH=\"$PATH:/c/ProgramData/Microsoft/WinGet/Links\")",
+      "Read(//c/Program Files/**)",
+      "Read(//c/Program Files \\(x86\\)/**)",
+      "Read(//c/Users/User/AppData/Local/Microsoft/WinGet/Packages//**)",
+      "Bash(export PATH=\"$FFMPEG_DIR:$PATH\")"
     ]
   },
   "hooks": {
