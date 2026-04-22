@@ -2,3 +2,6 @@ fastapi
 uvicorn[standard]
 cryptography
 ollama
+faster-whisper
+av
+python-multipart
