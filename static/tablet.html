@@ -131,6 +131,20 @@
       padding: 0.25rem 0.6rem; font-size: 0.75rem; color: #6b7280; cursor: pointer;
     }
     .clear-btn:hover { background: #f3f4f6; }
+
+    /* Tap-to-start overlay */
+    #tap-overlay {
+      position: fixed; inset: 0;
+      background: #065f46;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 1.5rem;
+      z-index: 999;
+      cursor: pointer;
+    }
+    #tap-overlay h2 { color: #fff; font-size: 2rem; font-weight: 700; }
+    #tap-overlay p { color: #a7f3d0; font-size: 1.1rem; }
+    #tap-overlay .tap-icon { font-size: 4rem; }
   </style>
 </head>
 <body>
