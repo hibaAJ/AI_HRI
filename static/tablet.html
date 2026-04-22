@@ -392,7 +392,10 @@
   }
 
   // ── Events ────────────────────────────────────────────────
-  document.getElementById('mic-btn').addEventListener('click', toggleMic);
+  const micBtn = document.getElementById('mic-btn');
+  micBtn.addEventListener('pointerdown', e => { e.preventDefault(); startRecording(); });
+  micBtn.addEventListener('pointerup', stopRecording);
+  micBtn.addEventListener('pointerleave', stopRecording);
 
   document.getElementById('send-btn').addEventListener('click', () => {
     const input = document.getElementById('text-input');
