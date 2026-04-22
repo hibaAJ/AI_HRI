@@ -112,8 +112,14 @@ async def transcribe(audio: UploadFile = File(...)):
         )
         text = " ".join(seg.text.strip() for seg in segments).strip()
         return JSONResponse({"text": text})
+    except Exception as e:
+        print(f"Transcription error: {e}")
+        return JSONResponse({"text": "", "error": str(e)}, status_code=200)
     finally:
-        os.unlink(tmp_path)
+        try:
+            os.unlink(tmp_path)
+        except Exception:
+            pass
 
 
 # ── Helpers ───────────────────────────────────────────────────
