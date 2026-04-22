@@ -22,7 +22,12 @@
       "WebFetch(domain:www.sharjah.ac.ae)",
       "WebFetch(domain:old.sharjah.ac.ae)",
       "WebFetch(domain:uosadmission.sharjah.ac.ae)",
-      "WebFetch(domain:sharjah24.ae)"
+      "WebFetch(domain:sharjah24.ae)",
+      "Bash(ollama pull *)",
+      "Bash(ollama list *)",
+      "Bash(netstat -ano)",
+      "Bash(awk '{print $5}')",
+      "Bash(taskkill *)"
     ]
   },
   "hooks": {

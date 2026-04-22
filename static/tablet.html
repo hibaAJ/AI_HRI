@@ -236,14 +236,16 @@
   // Fix common ASR misrecognitions for domain terms
   function correctTranscript(t) {
     return t
+      .replace(/\bgeorgia\b/gi, 'Sharjah')
       .replace(/\bshar+[jg]a+h?\b/gi, 'Sharjah')
       .replace(/\bshar+[jg]a\b/gi, 'Sharjah')
+      .replace(/\bsharp\s*jaw\b/gi, 'Sharjah')
+      .replace(/\bcharge\s*[auh]\b/gi, 'Sharjah')
       .replace(/\bcc[\s\-]?i\b/gi, 'CCI')
       .replace(/\bse[\s\-]?i\b/gi, 'CCI')
       .replace(/\bsee[\s\-]?i\b/gi, 'CCI')
       .replace(/\binformat+ics\b/gi, 'informatics')
-      .replace(/\babet\b/gi, 'ABET')
-      .replace(/\bcomputing\s+and\s+inform/gi, 'Computing and Informatics');
+      .replace(/\babet\b/gi, 'ABET');
   }
 
   function askQuestion(text) {
