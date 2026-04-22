@@ -261,12 +261,27 @@
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = 'en-US';
+    recognition.maxAlternatives = 3;
 
     recognition.onresult = (e) => {
       let interim = '', finalText = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) finalText += e.results[i][0].transcript.trim() + ' ';
-        else interim += e.results[i][0].transcript;
+        if (e.results[i].isFinal) {
+          // Pick the alternative with the highest confidence
+          let best = e.results[i][0];
+          for (let j = 1; j < e.results[i].length; j++) {
+            if (e.results[i][j].confidence > best.confidence) best = e.results[i][j];
+          }
+          if (best.confidence < 0.55) {
+            // Too uncertain — ask to repeat
+            document.getElementById('interim-text').textContent = 'Could not catch that clearly, please repeat.';
+            setTimeout(() => { document.getElementById('interim-text').textContent = ''; }, 2500);
+            continue;
+          }
+          finalText += best.transcript.trim() + ' ';
+        } else {
+          interim += e.results[i][0].transcript;
+        }
       }
       document.getElementById('interim-text').textContent = interim || '';
       if (finalText.trim()) {
