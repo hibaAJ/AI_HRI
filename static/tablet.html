@@ -245,86 +245,77 @@
     document.getElementById('ws-label').textContent = label;
   }
 
-  // ── ASR ───────────────────────────────────────────────────
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  let recognition = null;
-  let isListening = false;
+  // ── Recording (Whisper push-to-talk) ─────────────────────────
+  let mediaRecorder = null;
+  let audioChunks = [];
+  let isRecording = false;
+  let micStream = null;
 
-  function setupASR() {
-    const btn = document.getElementById('mic-btn');
-    if (!SR) {
-      btn.disabled = true;
-      document.getElementById('mic-label').textContent = 'ASR not supported';
-      return;
+  async function setupRecording() {
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+      });
+      document.getElementById('mic-btn').disabled = false;
+    } catch (_) {
+      document.getElementById('mic-btn').disabled = true;
+      document.getElementById('mic-label').textContent = 'Microphone access denied';
     }
-    recognition = new SR();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
-    recognition.maxAlternatives = 3;
+  }
 
-    recognition.onresult = (e) => {
-      let interim = '', finalText = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) {
-          // Pick the alternative with the highest confidence
-          let best = e.results[i][0];
-          for (let j = 1; j < e.results[i].length; j++) {
-            if (e.results[i][j].confidence > best.confidence) best = e.results[i][j];
-          }
-          if (best.confidence < 0.55) {
-            // Too uncertain — ask to repeat
-            document.getElementById('interim-text').textContent = 'Could not catch that clearly, please repeat.';
-            setTimeout(() => { document.getElementById('interim-text').textContent = ''; }, 2500);
-            continue;
-          }
-          finalText += best.transcript.trim() + ' ';
-        } else {
-          interim += e.results[i][0].transcript;
-        }
+  function startRecording() {
+    if (!micStream || isRecording) return;
+    audioChunks = [];
+    mediaRecorder = new MediaRecorder(micStream);
+    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+    mediaRecorder.onstop = sendAudio;
+    mediaRecorder.start();
+    isRecording = true;
+    setMicState(true);
+  }
+
+  function stopRecording() {
+    if (!mediaRecorder || !isRecording) return;
+    mediaRecorder.stop();
+    isRecording = false;
+    setMicState(false);
+  }
+
+  async function sendAudio() {
+    if (audioChunks.length === 0) return;
+    const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
+    showThinking();
+    document.getElementById('interim-text').textContent = 'Transcribing...';
+    const form = new FormData();
+    form.append('audio', blob, 'audio.webm');
+    try {
+      const resp = await fetch('/transcribe', { method: 'POST', body: form });
+      const { text } = await resp.json();
+      document.getElementById('interim-text').textContent = '';
+      if (text.trim()) {
+        askQuestion(text.trim());
+      } else {
+        const box = document.getElementById('answer-box');
+        box.className = 'answer-box empty';
+        box.textContent = 'Could not hear anything clearly. Please try again.';
       }
-      document.getElementById('interim-text').textContent = interim || '';
-      if (finalText.trim()) {
-        askQuestion(finalText.trim());
-        document.getElementById('interim-text').textContent = '';
-      }
-    };
-
-    recognition.onend = () => {
-      if (isListening) try { recognition.start(); } catch (_) {}
-    };
-
-    recognition.onerror = (e) => {
-      if (e.error === 'no-speech') return;
-      if (e.error === 'not-allowed') {
-        isListening = false;
-        setMicState(false);
-        alert('Microphone access denied. Please allow microphone access and reload.');
-      }
-    };
-
-    btn.disabled = false;
+    } catch (err) {
+      document.getElementById('interim-text').textContent = 'Transcription failed. Please try again.';
+    }
   }
 
   function setMicState(on) {
-    isListening = on;
     const btn = document.getElementById('mic-btn');
     if (on) {
       btn.classList.add('recording');
       document.getElementById('mic-icon').textContent = '⏹';
-      document.getElementById('mic-label').textContent = 'Stop Listening';
+      document.getElementById('mic-label').textContent = 'Recording...';
     } else {
       btn.classList.remove('recording');
       document.getElementById('mic-icon').innerHTML = '&#127908;';
-      document.getElementById('mic-label').textContent = 'Start Speaking';
+      document.getElementById('mic-label').textContent = 'Hold to Speak';
       document.getElementById('interim-text').textContent = '';
     }
-  }
-
-  function toggleMic() {
-    if (!recognition) return;
-    if (isListening) { isListening = false; recognition.stop(); setMicState(false); }
-    else { isListening = true; setMicState(true); try { recognition.start(); } catch (_) {} }
   }
 
   // ── TTS ───────────────────────────────────────────────────
