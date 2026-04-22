@@ -4,12 +4,49 @@ import socket
 import datetime
 import ipaddress
 import asyncio
+from contextlib import asynccontextmanager
+
+import numpy as np
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
+from sentence_transformers import SentenceTransformer
 
-app = FastAPI()
+# ── AI state ─────────────────────────────────────────────────
+qa_pairs: list[dict] = []
+qa_embeddings: np.ndarray | None = None
+model: SentenceTransformer | None = None
 
-# Two roles: "ground" and "tablet"
+THRESHOLD = 0.42
+FALLBACK = "Sorry, I don't have the context for that. Please repeat your question to the operator."
+
+
+def find_answer(query: str) -> str:
+    if model is None or qa_embeddings is None:
+        return FALLBACK
+    q_emb = model.encode([query], normalize_embeddings=True)
+    scores = (qa_embeddings @ q_emb.T).flatten()
+    best = int(scores.argmax())
+    if scores[best] < THRESHOLD:
+        return FALLBACK
+    return qa_pairs[best]["a"]
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global model, qa_embeddings, qa_pairs
+    print("Loading CCI knowledge base...")
+    with open("cci_data.json", encoding="utf-8") as f:
+        qa_pairs = json.load(f)
+    model = SentenceTransformer("all-MiniLM-L6-v2")
+    questions = [item["q"] for item in qa_pairs]
+    qa_embeddings = model.encode(questions, normalize_embeddings=True)
+    print(f"Loaded {len(qa_pairs)} Q&A pairs. Ready.")
+    yield
+
+
+# ── App & clients ─────────────────────────────────────────────
+app = FastAPI(lifespan=lifespan)
+
 clients: dict[str, WebSocket | None] = {"ground": None, "tablet": None}
 clients_lock = asyncio.Lock()
 
@@ -38,11 +75,7 @@ def generate_ssl_cert():
     print(f"Generating SSL certificate for localhost and {local_ip}...")
 
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-
-    subject = issuer = x509.Name([
-        x509.NameAttribute(NameOID.COMMON_NAME, "HRI Local"),
-    ])
-
+    subject = issuer = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "HRI Local")])
     cert = (
         x509.CertificateBuilder()
         .subject_name(subject)
@@ -64,15 +97,13 @@ def generate_ssl_cert():
 
     with open("cert.pem", "wb") as f:
         f.write(cert.public_bytes(serialization.Encoding.PEM))
-
     with open("key.pem", "wb") as f:
         f.write(key.private_bytes(
             serialization.Encoding.PEM,
             serialization.PrivateFormat.TraditionalOpenSSL,
             serialization.NoEncryption(),
         ))
-
-    print(f"SSL certificate generated.")
+    print("SSL certificate generated.")
 
 
 async def notify_peer_status(changed_role: str, connected: bool):
@@ -109,7 +140,6 @@ async def websocket_endpoint(websocket: WebSocket, role: str):
     print(f"[{role}] connected")
     await notify_peer_status(role, True)
 
-    # Tell the new client about the other side's current status
     other_role = "tablet" if role == "ground" else "ground"
     other_connected = clients.get(other_role) is not None
     try:
@@ -127,13 +157,36 @@ async def websocket_endpoint(websocket: WebSocket, role: str):
             msg = json.loads(data)
             msg["from"] = role
 
-            # Relay to the other client
-            other_ws = clients.get(other_role)
-            if other_ws:
+            if msg.get("type") == "ai_query" and role == "tablet":
+                # AI handles the question
+                answer = find_answer(msg["text"])
                 try:
-                    await other_ws.send_text(json.dumps(msg))
+                    await websocket.send_text(json.dumps({
+                        "type": "ai_response",
+                        "text": answer,
+                    }))
                 except Exception:
                     pass
+                # Log the exchange to ground station
+                ground_ws = clients.get("ground")
+                if ground_ws:
+                    try:
+                        await ground_ws.send_text(json.dumps({
+                            "type": "ai_log",
+                            "question": msg["text"],
+                            "answer": answer,
+                        }))
+                    except Exception:
+                        pass
+            else:
+                # Relay to the other side (operator overrides, etc.)
+                other_ws = clients.get(other_role)
+                if other_ws:
+                    try:
+                        await other_ws.send_text(json.dumps(msg))
+                    except Exception:
+                        pass
+
     except WebSocketDisconnect:
         async with clients_lock:
             if clients[role] is websocket:
@@ -152,13 +205,10 @@ if __name__ == "__main__":
     local_ip = get_local_ip()
 
     print("\n" + "=" * 50)
-    print("  HRI System Server")
+    print("  CCI GuideBot Server")
     print("=" * 50)
     print(f"  Ground Station : https://localhost:8000/ground_station.html")
     print(f"  Tablet         : https://{local_ip}:8000/tablet.html")
-    print("=" * 50)
-    print("  NOTE: Your browser will warn about the self-signed")
-    print("  certificate. Click 'Advanced' -> 'Proceed' to continue.")
     print("=" * 50 + "\n")
 
     uvicorn.run(
