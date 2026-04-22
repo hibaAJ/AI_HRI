@@ -10,7 +10,33 @@
       "Bash(gh auth:*)",
       "Bash(gh api:*)",
       "Bash(gh repo:*)",
-      "Skill(update-config)"
+      "Skill(update-config)",
+      "Bash(git add:*)",
+      "Bash(git diff:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git init:*)",
+      "Bash(git config:*)",
+      "Bash(jq:*)",
+      "WebSearch",
+      "WebFetch(domain:www.sharjah.ac.ae)",
+      "WebFetch(domain:old.sharjah.ac.ae)",
+      "WebFetch(domain:uosadmission.sharjah.ac.ae)",
+      "WebFetch(domain:sharjah24.ae)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"C:/Users/User/Desktop/SDP2/TTS\" && git add -A && git diff --cached --quiet || git commit -m \"Auto-commit: Claude edits\" 2>/dev/null || true",
+            "statusMessage": "Auto-committing changes..."
+          }
+        ]
+      }
     ]
   }
 }
