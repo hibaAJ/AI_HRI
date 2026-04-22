@@ -16,7 +16,7 @@ qa_pairs: list[dict] = []
 qa_embeddings: np.ndarray | None = None
 model: SentenceTransformer | None = None
 
-THRESHOLD = 0.42
+THRESHOLD = 0.55
 FALLBACK = "Sorry, I don't have the context for that. Please repeat your question to the operator."
 
 
