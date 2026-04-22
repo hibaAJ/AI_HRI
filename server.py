@@ -6,41 +6,55 @@ import ipaddress
 import asyncio
 from contextlib import asynccontextmanager
 
-import numpy as np
+import ollama as ollama_client
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
-from sentence_transformers import SentenceTransformer
 
 # ── AI state ─────────────────────────────────────────────────
-qa_pairs: list[dict] = []
-qa_embeddings: np.ndarray | None = None
-model: SentenceTransformer | None = None
-
-THRESHOLD = 0.55
+SYSTEM_PROMPT = ""
 FALLBACK = "Sorry, I don't have the context for that. Please repeat your question to the operator."
+MODEL = "llama3.2"
 
 
-def find_answer(query: str) -> str:
-    if model is None or qa_embeddings is None:
+def build_system_prompt(qa_pairs: list[dict]) -> str:
+    kb = "\n\n".join(f"Q: {item['q']}\nA: {item['a']}" for item in qa_pairs)
+    return f"""You are CCI GuideBot, a voice assistant at the College of Computing and Informatics (CCI) at the University of Sharjah.
+
+RULES:
+- Answer ONLY questions about CCI or the University of Sharjah's CCI college.
+- Use ONLY the knowledge base below. Do not make up information.
+- Keep answers short: 1-3 sentences max. This is spoken aloud.
+- If the question is not about CCI, respond with EXACTLY this phrase and nothing else:
+  {FALLBACK}
+
+KNOWLEDGE BASE:
+{kb}"""
+
+
+async def find_answer(query: str) -> str:
+    try:
+        client = ollama_client.AsyncClient()
+        response = await client.chat(
+            model=MODEL,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": query},
+            ],
+        )
+        return response.message.content.strip()
+    except Exception as e:
+        print(f"Ollama error: {e}")
         return FALLBACK
-    q_emb = model.encode([query], normalize_embeddings=True)
-    scores = (qa_embeddings @ q_emb.T).flatten()
-    best = int(scores.argmax())
-    if scores[best] < THRESHOLD:
-        return FALLBACK
-    return qa_pairs[best]["a"]
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global model, qa_embeddings, qa_pairs
+    global SYSTEM_PROMPT
     print("Loading CCI knowledge base...")
     with open("cci_data.json", encoding="utf-8") as f:
         qa_pairs = json.load(f)
-    model = SentenceTransformer("all-MiniLM-L6-v2")
-    questions = [item["q"] for item in qa_pairs]
-    qa_embeddings = model.encode(questions, normalize_embeddings=True)
-    print(f"Loaded {len(qa_pairs)} Q&A pairs. Ready.")
+    SYSTEM_PROMPT = build_system_prompt(qa_pairs)
+    print(f"Loaded {len(qa_pairs)} Q&A pairs. Model: {MODEL}")
     yield
 
 
@@ -158,8 +172,7 @@ async def websocket_endpoint(websocket: WebSocket, role: str):
             msg["from"] = role
 
             if msg.get("type") == "ai_query" and role == "tablet":
-                # AI handles the question
-                answer = find_answer(msg["text"])
+                answer = await find_answer(msg["text"])
                 try:
                     await websocket.send_text(json.dumps({
                         "type": "ai_response",
@@ -167,7 +180,6 @@ async def websocket_endpoint(websocket: WebSocket, role: str):
                     }))
                 except Exception:
                     pass
-                # Log the exchange to ground station
                 ground_ws = clients.get("ground")
                 if ground_ws:
                     try:
@@ -179,7 +191,6 @@ async def websocket_endpoint(websocket: WebSocket, role: str):
                     except Exception:
                         pass
             else:
-                # Relay to the other side (operator overrides, etc.)
                 other_ws = clients.get(other_role)
                 if other_ws:
                     try:
