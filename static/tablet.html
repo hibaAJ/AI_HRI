@@ -327,17 +327,16 @@
     return voices.find(v => v.lang.startsWith('en')) || null;
   }
 
-  function unlockTTS() {
-    if (ttsUnlocked) return;
-    ttsUnlocked = true;
-    const utt = new SpeechSynthesisUtterance(' ');
-    utt.volume = 0.01;
+  document.getElementById('tap-overlay').addEventListener('click', () => {
+    // Unlock TTS with a real user gesture
+    const utt = new SpeechSynthesisUtterance('Welcome to CCI GuideBot');
+    utt.lang = 'en-US';
     const v = getBestVoice();
     if (v) utt.voice = v;
     speechSynthesis.speak(utt);
-  }
-  document.addEventListener('touchstart', unlockTTS, { once: true });
-  document.addEventListener('click', unlockTTS, { once: true });
+    ttsUnlocked = true;
+    document.getElementById('tap-overlay').style.display = 'none';
+  });
 
   function speak(text) {
     if (!text) return;
