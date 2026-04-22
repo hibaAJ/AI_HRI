@@ -1,5 +1,4 @@
 fastapi
 uvicorn[standard]
 cryptography
-sentence-transformers
-numpy
+ollama
